@@ -7,8 +7,13 @@ import argparse
 from scipy.ndimage import gaussian_filter, convolve
 from scipy.io import savemat
 from tqdm import trange
-
 from util import gauss_kern, matlab_style_gauss_kern
+
+def rgb2gray(rgb):
+    if len(rgb.shape) > 2:
+        return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
+    else:
+        return rgb
 
 def flourescentImage(gt, sparse=5):
     '''
@@ -77,7 +82,8 @@ if __name__ == "__main__":
 
     # create ground truth
     #gt = genGroundTruth((64,64), 3)
-    gt = groundTruthFromFile("twostrands.tif")
+    #gt = groundTruthFromFile("smile.tif")
+    gt = rgb2gray(groundTruthFromFile("smile.tif")).astype(float)
 
     # create psf kernel
     g = gauss_kern(gt.shape[0], sigma=kernel_std)

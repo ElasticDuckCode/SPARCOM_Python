@@ -2,8 +2,8 @@
 import numpy as np
 import numpy.fft as fft
 from scipy.linalg import dft
+from scipy.ndimage import convolve
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
 from tqdm import trange
 from util import gauss_kern
 
@@ -22,21 +22,21 @@ def calc_v(H, R, M, N):
     Q = H.conj().T @ R
     Z = np.zeros([N*N, M*M], dtype=complex)
     v = np.zeros(N*N, dtype=float)
-    t1 = trange(M*M, desc='Calculating Z^H', leave=True)
-    for i in t1:
+    #for i in range(M*M):
+    for i in trange(M*M):
         q = Q[:,i]
         Ti = N * fft.ifft(Mat(q), N, axis=0)
         Ei = fft.fft(Ti.conj().T, N, axis=0)
         Z[:,i] = Vec(Ei.conj().T)[:,0]
     
     Z = Z.conj().T
-    t2 = trange(N*N, desc='Calculating v', leave=True)
-    for i in t2:
+    HZ = H.conj().T @ Z
+    #for i in range(N*N):
+    for i in trange(N*N):
         # special indicies
         l_i = i % N
         k_i = i // N
-
-        Hz = Mat(H.conj().T @ Z[:,i])
+        Hz = Mat(HZ[:,i])
         B = N * fft.ifft(Hz, N, axis=0) # ifft column-wise is same as F^H @ HZ
         u = fft.fft(B[l_i,:].conj().T, N, axis=0)
         v[i] = u[k_i].real
@@ -45,10 +45,12 @@ def calc_v(H, R, M, N):
 
 # Algorithm 5.1 from SPARCOM Paper
 def calc_Mx(B, x, N):
-    X = x.reshape(B.shape, order='F') # fortran-order important for this operation
+    #X = x.reshape(B.shape, order='F')
+    X = x.reshape(B.shape)
     Q = B * fft.fft2(X)
     Y = fft.ifft2(Q)
-    Mx = Vec(Y)
+    #Mx = Vec(Y)
+    Mx = Y.reshape(-1,1)
     return Mx.real
 
 def calc_B(U, N):
@@ -60,32 +62,21 @@ def calc_B(U, N):
 def tau(x, alpha):
     return np.maximum(np.abs(x) - alpha, 0) * np.sign(x)
 
-def solve(f, P, sigma, lamb, kmax, g=None):
+def solve(f, P, g, lamb, kmax, progress=True):
     T, M, _ = f.shape
     N = int(M * P)
 
-    # Get kernel of same shape as input
-    #xaxis = np.linspace(-N//2, N//2+1, N)
-    #Xax, Yax = np.meshgrid(xaxis, xaxis)
-    #r = np.vstack((Xax.reshape(1,-1), Yax.reshape(1,-1)))
-    #g = gauss_kern(r, sigma)
-    #g = g.reshape(N, N)
-    if g is None:
-        g = loadmat("data/psf.mat")["psf"]
-        g = g / np.max(g)
-    print(f"g: {g.dtype}, {g.shape}, {np.max(g)}, {np.min(g)}")
-
     # Calculate FFT
-    Y = fft.fft2(f, axes=(-2,-1))
-    U = fft.fft2(fft.ifftshift(g))
+    Y = fft.fftshift(fft.fft2(f))
+    U = fft.fftshift(fft.fft2(fft.ifftshift(g)))
 
     # Vectorize
+    Y = Y.reshape(T, M*M)
     Y = np.moveaxis(Y, 0, -1)
-    Y = Y.reshape(M*M, T, order='F')
-    H = np.diag(U.flatten(order='F'))
+    H = np.diag(U.flatten())
 
     # Calculate Empirical Autocovariance
-    EY = np.mean(Y, axis=1).reshape(-1,1, order='F')
+    EY = np.mean(Y, axis=1).reshape(-1,1)
     Y  = Y - EY
     R = 1/T * Y @ Y.conj().T
 
@@ -104,10 +95,9 @@ def solve(f, P, sigma, lamb, kmax, g=None):
     eps = 1e-4
 
     # Algorithm 4.1 Fast Proximal Graident Descent
-    itertout = trange(4, desc='Reweight', leave=True)
-    itert = trange(kmax, desc='FISTA', leave=True)
-    for p in itertout:
-        for k in itert:
+    #itertout = trange(4, desc='Reweighted FISTA', leave=True)
+    for _ in range(4):
+        for k in range(kmax):
             # Step 1: Update z
             z = x + ((t_prev - 1)/t) * (x - x_prev)
 
@@ -128,11 +118,13 @@ def solve(f, P, sigma, lamb, kmax, g=None):
 
         # Update weights
         w = 1/(np.abs(x) + eps)
+        eps /= 10
 
 
     # Create final SPARCOM image
     #img = np.flipud(np.abs(x.reshape(N, N)))
-    img = np.abs(x.reshape(N, N), order='F')
+    img = np.abs(x.reshape(N, N))
+    img = img / img.max()
     return img
 
 def solve_patch(f, P, sigma, lamb, kmax):

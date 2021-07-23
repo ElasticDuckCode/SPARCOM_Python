@@ -5,6 +5,7 @@ from scipy.io import loadmat
 from numpy import fft
 from scipy.linalg import dft
 from scipy.linalg import norm
+from scipy.ndimage import convolve
 from tqdm import trange
 from util import gauss_kern
 
@@ -64,22 +65,14 @@ def calc_Lf(U, N):
 def tau(x, alpha):
     return np.maximum(np.abs(x) - alpha, 0) * np.sign(x)
 
-def solve_direct(f, P, sigma, lamb, kmax):
+def solve_direct(f, P, g, lamb, kmax):
     # Get grid sizes and sequence number
     T, M, _ = f.shape
     N = int(M * P)
 
-    # Get the Gaussian kernel
-    #xx = np.linspace(-N//2, N//2+1, N)
-    #Xx, Xy = np.meshgrid(xx, xx)
-    #r = np.vstack([Xx.reshape(1, -1), Xy.reshape(1, -1)])
-    #g = gauss_kern(r, sigma)
-    #g = g.reshape(N, N)[::P, ::P]
-    g = loadmat("data/psf.mat")["psf"]
-
     # Calculate FFT
-    Y = fft.fft2(f)
-    U = fft.fft2(fft.ifftshift(g))
+    Y = fft.fftshift(fft.fft2(f))
+    U = fft.fftshift(fft.fft2(fft.ifftshift(g)))
     F_M = dft(N)[:M, :]
 
     # Vectorize
@@ -132,5 +125,10 @@ def solve_direct(f, P, sigma, lamb, kmax):
 
     # Create final SPARCOM image
     img = np.abs(x.reshape(N, N))
+
+    if P > 1:
+        img = convolve(img, g)
+    img = img / img.max()
+
     
     return img
