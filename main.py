@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # SPARCOM PGD parameters
     parser.add_argument('--lamb', type=float, default=1e-10, \
             help="lambda value for proximal gradient descent")
-    parser.add_argument('--kmax', type=float, default=2000, \
+    parser.add_argument('--kmax', type=float, default=1000, \
             help="max number of proximal gradient descent iterations.")
     args = parser.parse_args()
 
@@ -40,18 +40,20 @@ if __name__ == "__main__":
 
     # load in psf .mat file
     g = loadmat(args.kern_mat)["psf"]
-    g = g / np.max(g)
+    #g = g / np.max(g)
     print(f"g: {g.dtype}, {g.shape}, {np.max(g)}, {np.min(g)}")
 
     # pre-processing for SPARCOM
     sequence /= sequence.max()
-    sequence *= 255.0
     sequence -= np.median(sequence, axis=0)
+    sequence *= 255.0
 
     #pred = sparcom.solve_direct(sequence, args.scale, g, args.lamb, args.kmax)
-    pred = sparcom.solve(sequence, args.scale, g, args.lamb, args.kmax)
+    #pred = sparcom.solve(sequence, args.scale, g, args.lamb, args.kmax)
+    pred = sparcom.solve_ista(sequence, args.scale, g, args.lamb, args.kmax)
     #pred = sparcom.solve_patch(sequence, args.scale, g, args.lamb, args.kmax)
 
+    plt.rcParams['image.cmap'] = 'hot'
     plt.figure(figsize=(8,4), constrained_layout=True)
     plt.subplot(121)
     plt.imshow(avg)
@@ -65,10 +67,10 @@ if __name__ == "__main__":
     #plt.subplot(133)
     #plt.imshow(truth)
 
-    #pred = pred / pred.max()
-    #avg = avg / avg.max()
-    #tifffile.imwrite("sparcom.tif", pred.astype(np.float32))
-    #tifffile.imwrite("avg.tif", avg.astype(np.float32))
+    pred = pred / pred.max()
+    avg = avg / avg.max()
+    tifffile.imwrite("sparcom.tif", pred.astype(np.float32))
+    tifffile.imwrite("avg.tif", avg.astype(np.float32))
 
 
 

@@ -26,21 +26,21 @@ def calc_v(H, R, M, N):
     Q = H.conj().T @ R
     Z = np.zeros([N*N, M*M], dtype=complex)
     v = np.zeros(N*N, dtype=float)
-    t1 = trange(M*M, desc='Calculating Z^H', leave=True)
-    for i in t1:
+    #for i in range(M*M):
+    for i in trange(M*M):
         q = Q[:,i]
         Ti = N * fft.ifft(Mat(q), N, axis=0)
         Ei = fft.fft(Ti.conj().T, N, axis=0)
         Z[:,i] = Vec(Ei.conj().T)[:,0]
     
     Z = Z.conj().T
-    t2 = trange(N*N, desc='Calculating v', leave=True)
-    for i in t2:
+    HZ = H.conj().T @ Z
+    #for i in range(N*N):
+    for i in trange(N*N):
         # special indicies
         l_i = i % N
         k_i = i // N
-
-        Hz = Mat(H.conj().T @ Z[:,i])
+        Hz = Mat(HZ[:,i])
         B = N * fft.ifft(Hz, N, axis=0) # ifft column-wise is same as F^H @ HZ
         u = fft.fft(B[l_i,:].conj().T, N, axis=0)
         v[i] = u[k_i].real
@@ -61,22 +61,14 @@ def calc_B(U, N):
     B = fft.fft2(np.square(np.abs(E.conj().T)))
     return B
 
-def solve_ista(f, P, sigma, lamb, kmax):
+def solve_ista(f, P, g, lamb, kmax):
     # Get grid sizes and sequence number
     T, M, _ = f.shape
     N = int(M * P)
 
-    # Get the Gaussian kernel
-    #xx = np.linspace(-N//2, N//2+1, N)
-    #Xx, Xy = np.meshgrid(xx, xx)
-    #r = np.vstack([Xx.reshape(1, -1), Xy.reshape(1, -1)])
-    #g = gauss_kern(r, sigma)
-    #g = g.reshape(N, N)[::P, ::P]
-    g = loadmat("data/psf.mat")["psf"]
-
     # Calculate FFT
-    Y = fft.fft2(f)
-    U = fft.fft2(fft.ifftshift(g))
+    Y = fft.fftshift(fft.fft2(f))
+    U = fft.fftshift(fft.fft2(fft.ifftshift(g)))
 
     # Vectorize
     Y = Y.reshape(T, M*M)

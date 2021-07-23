@@ -92,7 +92,7 @@ def solve(f, P, g, lamb, kmax, progress=True):
     x_prev = np.zeros(v.shape, dtype=float)
     w = np.ones(v.shape, dtype=float)
     t = t_prev =  1.0
-    eps = 1e-4
+    eps = 1
 
     # Algorithm 4.1 Fast Proximal Graident Descent
     #itertout = trange(4, desc='Reweighted FISTA', leave=True)
@@ -118,7 +118,6 @@ def solve(f, P, g, lamb, kmax, progress=True):
 
         # Update weights
         w = 1/(np.abs(x) + eps)
-        eps /= 10
 
 
     # Create final SPARCOM image
