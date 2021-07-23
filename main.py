@@ -27,9 +27,9 @@ if __name__ == "__main__":
             help="max number of proximal gradient descent iterations.")
     args = parser.parse_args()
 
-    #with TiffFile(args.truth) as tif:
-    #    truth = tif.asarray()
-    #    print(f"truth: {truth.shape}")
+    with TiffFile(args.truth) as tif:
+        truth = tif.asarray()
+        print(f"truth: {truth.shape}")
     with TiffFile(args.tifffile) as tif:
         sequence = tif.asarray(key=range(len(tif.pages))).astype(np.float32)
         #sequence = (sequence.astype(float).T / np.max(sequence, axis=(1,2))).T
@@ -54,15 +54,21 @@ if __name__ == "__main__":
     #pred = sparcom.solve_patch(sequence, args.scale, g, args.lamb, args.kmax)
 
     plt.rcParams['image.cmap'] = 'hot'
-    plt.figure(figsize=(8,4), constrained_layout=True)
-    plt.subplot(121)
+    #plt.figure(figsize=(8,4), constrained_layout=True)
+    plt.figure(figsize=(12,4), constrained_layout=True)
+    plt.subplot(131)
     plt.imshow(avg)
-    plt.title("Diffraction Limited")
-    plt.subplot(122)
+    plt.title("Diffraction Limited", fontsize=16)
+    plt.subplot(132)
     plt.imshow(pred)
-    plt.title("SPARCOM")
+    plt.title("SPARCOM", fontsize=16)
+    plt.subplot(133)
+    plt.imshow(truth)
+    plt.title("Ground Truth", fontsize=16)
+    plt.tight_layout()
     plt.show()
-    #plt.close()
+    plt.savefig("results.png")
+    plt.close()
 
     #plt.subplot(133)
     #plt.imshow(truth)
