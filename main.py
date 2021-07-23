@@ -66,8 +66,8 @@ if __name__ == "__main__":
     plt.imshow(truth)
     plt.title("Ground Truth", fontsize=16)
     plt.tight_layout()
-    plt.show()
     plt.savefig("results.png")
+    plt.show()
     plt.close()
 
     #plt.subplot(133)
